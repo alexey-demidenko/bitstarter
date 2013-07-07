@@ -49,15 +49,6 @@ var processURL = function(url, fn) {
     });
 }
 
-var checkResultFn = function(result) {
-}
-
-var assertURLExists = function(url) {
-    var result = url.toString();
-    processURL(url, checkResultFn);
-    return result;
-};
-
 var readHtmlFile = function(htmlfile) {
     return fs.readFileSync(htmlfile);
 }
@@ -116,4 +107,3 @@ if(require.main == module) {
 } else {
     exports.checkHtmlFile = checkHtmlFile;
 }
-
