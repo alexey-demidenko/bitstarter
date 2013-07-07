@@ -32,22 +32,31 @@ var URL_DEFAULT = "https://spark-public.s3.amazonaws.com/startup/code/bitstarter
 var assertFileExists = function(infile) {
     var instr = infile.toString();
     if(!fs.existsSync(instr)) {
-        console.log("%s does not exist. Exiting.", instr);
+        console.log("%s does not exist", instr);
         process.exit(1); // http://nodejs.org/api/process.html#process_process_exit_code
     }
     return instr;
 };
 
-var assertURLExists = function(url) {
-    var result = url.toString();
-    return result;
-};
-
 var processURL = function(url, fn) {
     rest.get(url).on('complete', function(result, response) { 
-	fn(result);
+	if (result instanceof Error) {
+            console.log("%s does not exist", url);
+            process.exit(1); // http://nodejs.org/api/process.html#process_process_exit_code
+	} else {
+	    fn(result);
+	}
     });
 }
+
+var checkResultFn = function(result) {
+}
+
+var assertURLExists = function(url) {
+    var result = url.toString();
+    processURL(url, checkResultFn);
+    return result;
+};
 
 var readHtmlFile = function(htmlfile) {
     return fs.readFileSync(htmlfile);
@@ -77,7 +86,7 @@ var processHtmlFn = function(checksFile) {
 	var checkJson = checkHtml(html, checksFile);
 	var outJson = JSON.stringify(checkJson, null, 4);
 	console.log(outJson);
-    };
+    }
     return processHtml;
 }
 
@@ -96,7 +105,7 @@ if(require.main == module) {
     program
         .option('-c, --checks <check_file>', 'Path to checks.json', clone(assertFileExists), CHECKSFILE_DEFAULT)
         .option('-f, --file <html_file>', 'Path to index.html', clone(assertFileExists))
-        .option('-u, --url <url_ref>', 'URL to html file', clone(assertURLExists))
+        .option('-u, --url <url_ref>', 'URL to html file')
         .parse(process.argv);
     if (program.url) {
 	processURL(program.url, processHtmlFn(program.checks));
