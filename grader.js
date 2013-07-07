@@ -24,8 +24,10 @@ References:
 var fs = require('fs');
 var program = require('commander');
 var cheerio = require('cheerio');
+var rest = require('restler');
 var HTMLFILE_DEFAULT = "index.html";
 var CHECKSFILE_DEFAULT = "checks.json";
+var URL_DEFAULT = "https://spark-public.s3.amazonaws.com/startup/code/bitstarter.html";
 
 var assertFileExists = function(infile) {
     var instr = infile.toString();
@@ -36,16 +38,31 @@ var assertFileExists = function(infile) {
     return instr;
 };
 
-var cheerioHtmlFile = function(htmlfile) {
-    return cheerio.load(fs.readFileSync(htmlfile));
+var assertURLExists = function(url) {
+    var result = url.toString();
+    return result;
+};
+
+var processURL = function(url, fn) {
+    rest.get(url).on('complete', function(result, response) { 
+	fn(result);
+    });
+}
+
+var readHtmlFile = function(htmlfile) {
+    return fs.readFileSync(htmlfile);
+}
+
+var cheerioHtml = function(html) {
+    return cheerio.load(html);
 };
 
 var loadChecks = function(checksfile) {
     return JSON.parse(fs.readFileSync(checksfile));
 };
 
-var checkHtmlFile = function(htmlfile, checksfile) {
-    $ = cheerioHtmlFile(htmlfile);
+var checkHtml = function(html, checksfile) {
+    $ = cheerioHtml(html);
     var checks = loadChecks(checksfile).sort();
     var out = {};
     for(var ii in checks) {
@@ -54,6 +71,19 @@ var checkHtmlFile = function(htmlfile, checksfile) {
     }
     return out;
 };
+
+var processHtmlFn = function(checksFile) {
+    var processHtml = function(html) {
+	var checkJson = checkHtml(html, checksFile);
+	var outJson = JSON.stringify(checkJson, null, 4);
+	console.log(outJson);
+    };
+    return processHtml;
+}
+
+var checkHtmlFile = function(htmlfile, checksfile) {
+    checkHtml(readHtmlFile(htmlfile));
+}
 
 var clone = function(fn) {
     // Workaround for commander.js issue.
@@ -64,11 +94,15 @@ var clone = function(fn) {
 if(require.main == module) {
     program
         .option('-c, --checks <check_file>', 'Path to checks.json', clone(assertFileExists), CHECKSFILE_DEFAULT)
-        .option('-f, --file <html_file>', 'Path to index.html', clone(assertFileExists), HTMLFILE_DEFAULT)
+        .option('-f, --file <html_file>', 'Path to index.html', clone(assertFileExists))
+        .option('-u, --url <url_ref>', 'URL to html file', clone(assertURLExists))
         .parse(process.argv);
-    var checkJson = checkHtmlFile(program.file, program.checks);
-    var outJson = JSON.stringify(checkJson, null, 4);
-    console.log(outJson);
+    if (program.url) {
+	processURL(program.url, processHtmlFn(program.checks));
+    } else {
+	file = program.file || HTMLFILE_DEFAULT;
+	processHtmlFn(program.checks)(readHtmlFile(file));
+    }
 } else {
     exports.checkHtmlFile = checkHtmlFile;
 }
